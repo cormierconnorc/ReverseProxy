@@ -9,11 +9,12 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Control.Concurrent
 import System.Process
+import System.Directory
 
 main = do
      let conf = nullConf { port = 80 }
-     mappings <- readFile "proxy.conf"
-     let (reCont, cmdCont) = partition (not . (=='$') . head) . filter (not . (=='#') . head)  . lines $ mappings
+     config <- readConfig
+     let (reCont, cmdCont) = partition (not . (=='$') . head) . filter (not . (=='#') . head)  . lines $ config
          cmds = map (tail) cmdCont
          redirs = map (split) reCont
          routes = map (reverseProxy) redirs
@@ -25,6 +26,12 @@ main = do
      where split str = let Just ind = '|' `elemIndex` str
                        in (take ind str, drop (ind + 1) str)
 
+readConfig :: IO String
+readConfig = do
+           fileExists <- doesFileExist "proxy.conf"
+           if fileExists
+              then readFile "proxy.conf"
+              else readFile "/etc/reverse_proxy/proxy.conf"
 
 execute :: String -> IO ThreadId
 execute cmd = forkIO $ do
